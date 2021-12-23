@@ -1,0 +1,15 @@
+version: '3.1'
+services:
+  mongo:
+    image: mongo
+    container_name: mongodb
+  web:
+    image: web
+    build: ..
+    depends_on:
+      - mongo
+    volumes:
+      - data-volume:/usr/src/report
+
+volumes:
+  data-volume:

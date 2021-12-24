@@ -10,7 +10,8 @@ from qastorage.dto import BaseDTO
 
 class MongoStore(AbstractStore):
 
-    BASE_COLLECTION_NAME = "Base"
+    BASES_COLLECTION_NAME = "Bases"
+    GROUPS_COLLECTION_NAME = "Groups"
 
     def __init__(self, client: MongoClient, db_name: str) -> None:
         self._client = client
@@ -18,11 +19,15 @@ class MongoStore(AbstractStore):
         self._db = self._client.get_database(self._db_name)
 
     @property
-    def _base_collection(self) -> Collection:
-        return self._db.get_collection(self.BASE_COLLECTION_NAME)
+    def _bases_collection(self) -> Collection:
+        return self._db.get_collection(self.BASES_COLLECTION_NAME)
+
+    @property
+    def _groups_collection(self) -> Collection:
+        return self._db.get_collection(self.GROUPS_COLLECTION_NAME)
 
     def get_or_create_base(self, dto: BaseDTO, session: ClientSession = None) -> UUID:
-        doc = self._base_collection.find_one_and_update(
+        doc = self._bases_collection.find_one_and_update(
             filter={"question": dto.question, "type": dto.type},
             update={"$setOnInsert": {"id": uuid4()}},
             upsert=True,

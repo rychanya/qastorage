@@ -22,11 +22,11 @@ def test_gorc_base(store: MongoStore, fake_base_dto: QABaseDTO):
         return store._bases_collection.count_documents({})
 
     assert count_documents() == 0
-    id = store.get_or_create_base(fake_base_dto)
+    base1 = store.get_or_create_base(fake_base_dto)
     assert count_documents() == 1
-    id2 = store.get_or_create_base(fake_base_dto)
+    base2 = store.get_or_create_base(fake_base_dto)
     assert count_documents() == 1
-    assert id == id2
+    assert base1.id == base2.id
 
 
 def test_gorc_group(store: MongoStore, fake_group_dto: QAGroupDTO):

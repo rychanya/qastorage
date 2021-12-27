@@ -1,4 +1,6 @@
 from enum import Enum
+from typing import Optional, Union
+from uuid import UUID
 
 from pydantic import BaseModel, constr
 
@@ -12,6 +14,18 @@ class QATypeEnum(str, Enum):
     MatchingChoice = "Соедините соответствия справа с правильными вариантами"
 
 
-class BaseDTO(BaseModel):
+class QABaseDTO(BaseModel):
     question: ConStr
     type: QATypeEnum
+
+
+class QAGroupDTO(BaseModel):
+    all_answers: list[ConStr]
+    all_extra: list[ConStr] = []
+    base_id: Optional[UUID]
+
+
+class QAAnswerDTO(QABaseDTO):
+    group: Union[None, UUID, QAGroupDTO]
+    answer: list[ConStr]
+    is_correct: bool

@@ -13,3 +13,9 @@ def pretty(session: nox.Session):
 @nox.session(py=False)
 def tests(session: nox.Session):
     session.run("poetry", "run", "pytest")
+
+
+@nox.session(py=False)
+def cov(session: nox.Session):
+    session.run("coverage", "run", "--source=storage", "-m", "pytest")
+    session.run("coverage", "html")

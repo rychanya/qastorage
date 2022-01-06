@@ -1,4 +1,4 @@
-from qastorage import __version__
+from storage import __version__
 
 
 def test_version():

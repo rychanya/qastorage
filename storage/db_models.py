@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from qastorage.dto import ConStr, QATypeEnum
+from storage.dto import ConStr, QATypeEnum
 
 
 class QABase(BaseModel):

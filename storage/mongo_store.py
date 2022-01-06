@@ -5,14 +5,14 @@ from pymongo import MongoClient, ReturnDocument
 from pymongo.client_session import ClientSession
 from pymongo.collection import Collection
 
-from qastorage.base_store import (
+from storage.base_store import (
     AbstractStore,
     QAAnswerValidation,
     QABaseNotExist,
     QAGroupNotExist,
 )
-from qastorage.db_models import QAAnswer, QABase, QAGroup
-from qastorage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO, QATypeEnum
+from storage.db_models import QAAnswer, QABase, QAGroup
+from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO, QATypeEnum
 
 
 class MongoStore(AbstractStore):

@@ -2,8 +2,8 @@ import abc
 from typing import Tuple, Union
 from uuid import UUID
 
-from qastorage.db_models import QAAnswer, QABase, QAGroup
-from qastorage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO
+from storage.db_models import QAAnswer, QABase, QAGroup
+from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO
 
 
 class QABaseNotExist(Exception):

@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from qastorage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO, QATypeEnum
-from qastorage.mongo_srore import MongoStore
+from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO, QATypeEnum
+from storage.mongo_store import MongoStore
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def fake_answer_dto(fake_base_dto: QABaseDTO, fake_group_dto: QAGroupDTO):
     )
 
 
-def test_gorc_base(store: MongoStore, fake_base_dto: QABaseDTO):
+def test_get_or_create_base(store: MongoStore, fake_base_dto: QABaseDTO):
     def count_documents():
         return store._bases_collection.count_documents({})
 
@@ -39,7 +39,7 @@ def test_gorc_base(store: MongoStore, fake_base_dto: QABaseDTO):
     assert base1.id == base2.id
 
 
-def test_gorc_group(store: MongoStore, fake_group_dto: QAGroupDTO):
+def test_get_or_create_group(store: MongoStore, fake_group_dto: QAGroupDTO):
     def count_documents():
         return store._groups_collection.count_documents({})
 
@@ -58,7 +58,7 @@ def test_gorc_group(store: MongoStore, fake_group_dto: QAGroupDTO):
     assert id3 == id
 
 
-def test_gorc_answer(store: MongoStore, fake_answer_dto: QAAnswerDTO):
+def test_get_or_create_answer(store: MongoStore, fake_answer_dto: QAAnswerDTO):
     def count_documents():
         return store._answers_collection.count_documents({})
 

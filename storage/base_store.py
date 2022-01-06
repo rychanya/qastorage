@@ -20,15 +20,19 @@ class QAAnswerValidation(Exception):
 
 class AbstractStore(abc.ABC):
     @abc.abstractmethod
-    def get_or_create_base(self, dto: Union[QABaseDTO, UUID], **kwargs) -> QABase:
+    def get_or_create_base(
+        self, dto: Union[QABaseDTO, UUID], **kwargs
+    ) -> QABase:  # pragma: no cover
         ...
 
     @abc.abstractmethod
     def get_or_create_group(
-        self, dto: Union[QAGroupDTO, UUID], base_id: UUID, **kwargs
-    ) -> QAGroup:
+        self, dto: Union[QAGroupDTO, UUID, None], base_id: UUID, **kwargs
+    ) -> QAGroup:  # pragma: no cover
         ...
 
     @abc.abstractmethod
-    def get_or_create_qa(self, dto: QAAnswerDTO, **kwargs) -> Tuple[QAAnswer, bool]:
+    def get_or_create_qa(
+        self, dto: QAAnswerDTO, **kwargs
+    ) -> Tuple[QAAnswer, bool]:  # pragma: no cover
         ...

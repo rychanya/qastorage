@@ -41,7 +41,7 @@ class MongoStore(AbstractStore):
     def get_base_by_id(self, base_id: UUID, session: ClientSession = None) -> QABase:
         doc = self._bases_collection.find_one(filter={"id": base_id}, session=session)
         if doc is None:
-            raise QAGroupNotExist
+            raise QABaseNotExist
         return QABase.parse_obj(doc)
 
     def get_or_create_base(
@@ -61,7 +61,7 @@ class MongoStore(AbstractStore):
     def get_group_by_id(self, group_id: UUID, session: ClientSession = None) -> QAGroup:
         doc = self._groups_collection.find_one(filter={"id": group_id}, session=session)
         if doc is None:
-            raise QABaseNotExist
+            raise QAGroupNotExist
         return QAGroup.parse_obj(doc)
 
     def get_or_create_group(

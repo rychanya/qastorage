@@ -3,22 +3,13 @@ from uuid import uuid4
 import pytest
 
 from storage.base_store import QABaseNotExist
-from storage.dto import QABaseDTO, QATypeEnum
+from storage.dto import QABaseDTO
 
 from . import mongo_helpers
-from .helpers import CountRaw, FindRaw, GetStore, InsertRaw
+from .helpers import CountRaw, FindRaw, GetStore, InsertRaw, QABaseDicts, QABaseDTOs
 
 
-@pytest.fixture
-def fake_base_dto():
-    return QABaseDTO(question="question", type=QATypeEnum.OnlyChoice)
-
-
-@pytest.fixture
-def fake_base_dict():
-    return {"question": "question", "type": QATypeEnum.OnlyChoice, "id": uuid4()}
-
-
+@pytest.mark.parametrize("fake_base_dto", QABaseDTOs)
 @pytest.mark.parametrize(
     "get_store, count_base", [(mongo_helpers.StoreContext, mongo_helpers.count_base)]
 )
@@ -33,6 +24,7 @@ def test_if_not_in_db(
         assert count_base(store) == 1
 
 
+@pytest.mark.parametrize("fake_base_dict", QABaseDicts)
 @pytest.mark.parametrize(
     "get_store, insert_base_row, find_base_row, count_base",
     [
@@ -64,6 +56,7 @@ def test_if_in_db(
         assert base.id == doc["id"]
 
 
+@pytest.mark.parametrize("fake_base_dict", QABaseDicts)
 @pytest.mark.parametrize(
     "get_store, insert_base_row, find_base_row, count_base",
     [
@@ -98,6 +91,7 @@ def test_id(
         assert count_base(store) == 1
 
 
+@pytest.mark.parametrize("fake_base_dict", QABaseDicts)
 @pytest.mark.parametrize(
     "get_store, insert_base_row, find_base_row, count_base",
     [

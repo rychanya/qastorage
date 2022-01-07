@@ -6,28 +6,16 @@ from storage.base_store import QAGroupNotExist
 from storage.dto import QAGroupDTO
 
 from . import mongo_helpers
-from .helpers import CountRaw, FindRaw, GetStore, InsertRaw
+from .helpers import CountRaw, FindRaw, GetStore, InsertRaw, QAGroupDicts, QAGroupDTOs
 
 
-@pytest.fixture
-def fake_group_dto():
-    return QAGroupDTO(all_answers=["1", "2", "3", "4"])
-
-
-@pytest.fixture
-def fake_group_dict():
-    return {
-        "all_answers": ["1", "2", "3", "4"],
-        "all_extra": [],
-        "base_id": uuid4(),
-        "id": uuid4(),
-    }
-
-
+@pytest.mark.parametrize("fake_group_dto", QAGroupDTOs)
 @pytest.mark.parametrize(
     "get_store, count_group", [(mongo_helpers.StoreContext, mongo_helpers.count_group)]
 )
-def test_if_not_in_db(get_store: GetStore, count_group: CountRaw, fake_group_dto):
+def test_if_not_in_db(
+    get_store: GetStore, count_group: CountRaw, fake_group_dto: QAGroupDTO
+):
     with get_store() as store:
         assert count_group(store) == 0
         base_id = uuid4()
@@ -37,6 +25,7 @@ def test_if_not_in_db(get_store: GetStore, count_group: CountRaw, fake_group_dto
         assert count_group(store) == 1
 
 
+@pytest.mark.parametrize("fake_group_dict", QAGroupDicts)
 @pytest.mark.parametrize(
     "get_store, insert_group_row, find_group_row, count_group",
     [
@@ -71,6 +60,7 @@ def test_if_in_db(
         assert group.id == doc["id"]
 
 
+@pytest.mark.parametrize("fake_group_dict", QAGroupDicts)
 @pytest.mark.parametrize(
     "get_store, insert_group_row, find_group_row, count_group",
     [
@@ -106,6 +96,7 @@ def test_id(
         assert count_group(store) == 1
 
 
+@pytest.mark.parametrize("fake_group_dict", QAGroupDicts)
 @pytest.mark.parametrize(
     "get_store, insert_group_row, find_group_row, count_group",
     [

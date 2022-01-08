@@ -1,4 +1,4 @@
-from typing import Any, ContextManager, Optional, Protocol, Union
+from typing import Any, ContextManager, Optional, Protocol
 from uuid import uuid4
 
 from storage.base_store import AbstractStore
@@ -16,12 +16,7 @@ class FindRaw(Protocol):
 
 
 class InsertRaw(Protocol):
-    def __call__(
-        self,
-        store: AbstractStore,
-        data: Union[dict, tuple[dict, dict, Optional[dict]]],
-        **kwds: Any
-    ) -> None:
+    def __call__(self, store: AbstractStore, data: dict, **kwds: Any) -> None:
         ...
 
 
@@ -55,7 +50,42 @@ QAAnswerDTOs = [
 QAAnswerTuples = [
     (
         {"answer": ["answer"], "is_correct": True, "id": uuid4()},
-        {"question": "question", "type": QATypeEnum.OnlyChoice},
+        QABaseDTO(question="question", type=QATypeEnum.OnlyChoice),
         None,
     )
 ]
+
+QAIncorrectAnswer = [
+    QAAnswerDTO(
+        base=QABaseDTO(question="question", type=QATypeEnum.OnlyChoice),
+        group=QAGroupDTO(all_answers=["answer1", "answer2"]),
+        answer=["answer1", "answer2"],
+        is_correct=True,
+    ),
+    QAAnswerDTO(
+        base=QABaseDTO(question="question", type=QATypeEnum.MultipleChoice),
+        group=QAGroupDTO(all_answers=["answer1", "answer2"]),
+        answer=["answer1", "answer3"],
+        is_correct=True,
+    ),
+    QAAnswerDTO(
+        base=QABaseDTO(question="question", type=QATypeEnum.RangingChoice),
+        group=QAGroupDTO(all_answers=["answer1", "answer2"]),
+        answer=["answer1", "answer3"],
+        is_correct=True,
+    ),
+]
+
+
+def qa_answer_tuple_to_dto(
+    data: tuple[dict, QABaseDTO, Optional[QAGroupDTO]]
+) -> QAAnswerDTO:
+    answer, base, group = data
+    return QAAnswerDTO.parse_obj(
+        {
+            "base": base.dict(),
+            "group": group.dict if group else None,
+            "answer": answer["answer"],
+            "is_correct": answer["is_correct"],
+        }
+    )

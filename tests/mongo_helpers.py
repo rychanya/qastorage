@@ -1,10 +1,10 @@
 from typing import Optional
+from uuid import UUID
 
 from pymongo import MongoClient
 from pymongo.client_session import ClientSession
 from testcontainers.mongodb import MongoDbContainer
 
-from storage.dto import QABaseDTO, QAGroupDTO
 from storage.mongo_store import MongoStore
 
 
@@ -51,24 +51,18 @@ def count_group(store: MongoStore, session: ClientSession = None) -> int:
 
 def insert_answer_raw(
     store: MongoStore,
-    data: tuple[dict, dict, Optional[dict]],
+    data: dict,
+    group_id: Optional[UUID],
+    base_id: UUID,
     session: ClientSession = None,
 ):
-    answer_dict, base_dict, group_dict = data
-    base_id = store.get_or_create_base(QABaseDTO.parse_obj(base_dict)).id
-    if group_dict is None:
-        group_id = None
-    else:
-        group = store.get_or_create_group(QAGroupDTO.parse_obj(group_dict), base_id)
-        assert group
-        group_id = group.id
     store._answers_collection.insert_one(
         {
-            "id": answer_dict["id"],
+            "id": data["id"],
             "base_id": base_id,
             "group_id": group_id,
-            "answer": answer_dict["answer"],
-            "is_correct": answer_dict["is_correct"],
+            "answer": data["answer"],
+            "is_correct": data["is_correct"],
         },
         session=session,
     )

@@ -7,9 +7,11 @@ from pymongo.collection import Collection
 
 from storage.base_store import (
     AbstractStore,
-    QAAnswerValidation,
+    QAAnswerNotExist,
     QABaseNotExist,
+    QABasesDoNotMatch,
     QAGroupNotExist,
+    QAStoreException,
 )
 from storage.db_models import QAAnswer, QABase, QAGroup
 from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO, QATypeEnum
@@ -38,12 +40,6 @@ class MongoStore(AbstractStore):
     def _answers_collection(self) -> Collection:
         return self._db.get_collection(self.ANSWERS_COLLECTION_NAME)
 
-    def get_base_by_id(self, base_id: UUID, session: ClientSession = None) -> QABase:
-        doc = self._bases_collection.find_one(filter={"id": base_id}, session=session)
-        if doc is None:
-            raise QABaseNotExist
-        return QABase.parse_obj(doc)
-
     def get_or_create_base(
         self, dto: Union[QABaseDTO, UUID], session: ClientSession = None
     ) -> QABase:
@@ -57,12 +53,6 @@ class MongoStore(AbstractStore):
             session=session,
         )
         return QABase.parse_obj(doc)
-
-    def get_group_by_id(self, group_id: UUID, session: ClientSession = None) -> QAGroup:
-        doc = self._groups_collection.find_one(filter={"id": group_id}, session=session)
-        if doc is None:
-            raise QAGroupNotExist
-        return QAGroup.parse_obj(doc)
 
     def get_or_create_group(
         self,
@@ -117,34 +107,9 @@ class MongoStore(AbstractStore):
         self, dto: QAAnswerDTO, session: ClientSession = None
     ) -> Tuple[QAAnswer, bool]:
         base = self.get_or_create_base(dto.base, session=session)
-        if base.type == QATypeEnum.OnlyChoice and not len(dto.answer) == 1:
-            raise QAAnswerValidation
         group = self.get_or_create_group(dto.group, base.id, session=session)
-        if group:
-            if (
-                base.type
-                in (
-                    QATypeEnum.OnlyChoice,
-                    QATypeEnum.MultipleChoice,
-                )
-                and not set(dto.answer).issubset(group.all_answers)
-            ):
-                raise QAAnswerValidation
-            if (
-                base.type
-                in (
-                    QATypeEnum.MatchingChoice,
-                    QATypeEnum.RangingChoice,
-                )
-                and not set(dto.answer) == set(group.all_answers)
-            ):
-                raise QAAnswerValidation
+        self.validate_answer_in_group(base, dto, group)
 
-        match = (
-            {"$match": {"$expr": {"$setEquals": ["$answer", dto.answer]}}}
-            if base.type == QATypeEnum.MultipleChoice
-            else {"$match": {"answer": dto.answer}}
-        )
         doc = list(
             self._answers_collection.aggregate(
                 pipeline=[
@@ -155,7 +120,11 @@ class MongoStore(AbstractStore):
                             "is_correct": dto.is_correct,
                         }
                     },
-                    match,
+                    (
+                        {"$match": {"$expr": {"$setEquals": ["$answer", dto.answer]}}}
+                        if base.type == QATypeEnum.MultipleChoice
+                        else {"$match": {"answer": dto.answer}}
+                    ),
                 ],
                 session=session,
             )
@@ -184,3 +153,40 @@ class MongoStore(AbstractStore):
                 ),
                 True,
             )
+
+    def add_group_to_answer(
+        self, answer_id: UUID, group_id: UUID, session: ClientSession = None
+    ):
+        answer = self.get_answer_by_id(answer_id, session)
+        group = self.get_group_by_id(group_id, session)
+        if answer.base_id != group.base_id:
+            raise QABasesDoNotMatch
+        base = self.get_base_by_id(answer.base_id, session)
+        self.validate_answer_in_group(base, answer, group)
+        res = self._answers_collection.update_one(
+            {"id": answer.id}, {"$set": {"group_id": group.id}}
+        )
+        if res.matched_count != 1 or res.modified_count != 1:
+            raise QAStoreException
+
+    def get_answer_by_id(
+        self, answer_id: UUID, session: ClientSession = None
+    ) -> QAAnswer:
+        doc = self._answers_collection.find_one({"id": answer_id}, session=session)
+        if doc is None:
+            raise QAAnswerNotExist
+        return QAAnswer.parse_obj(doc)
+
+    def get_group_by_id(
+        self, answer_id: UUID, session: ClientSession = None
+    ) -> QAGroup:
+        doc = self._groups_collection.find_one({"id": answer_id}, session=session)
+        if doc is None:
+            raise QAGroupNotExist
+        return QAGroup.parse_obj(doc)
+
+    def get_base_by_id(self, base_id: UUID, session: ClientSession = None) -> QABase:
+        doc = self._bases_collection.find_one({"id": base_id}, session)
+        if doc is None:
+            raise QABaseNotExist
+        return QABase.parse_obj(doc)

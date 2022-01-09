@@ -1,8 +1,9 @@
 from typing import Optional
+from uuid import uuid4
 
 import pytest
 
-from storage.base_store import QAAnswerValidation
+from storage.base_store import QAAnswerNotExist, QAAnswerValidation
 from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO
 
 from . import mongo_helpers
@@ -94,5 +95,27 @@ def test_incorrect(
 
         with pytest.raises(QAAnswerValidation):
             store.get_or_create_qa(fake_answer)
+
+        assert count_answer(store) == 0
+
+
+@pytest.mark.parametrize(
+    "get_store, count_answer",
+    [
+        (
+            mongo_helpers.StoreContext,
+            mongo_helpers.count_answer,
+        )
+    ],
+)
+def test_get_by_id_if_not_in_db(
+    count_answer: CountRaw,
+    get_store: GetStore,
+):
+    with get_store() as store:
+        assert count_answer(store) == 0
+
+        with pytest.raises(QAAnswerNotExist):
+            store.get_answer_by_id(uuid4())
 
         assert count_answer(store) == 0

@@ -86,22 +86,16 @@ class MongoStore(AbstractStore):
         if doc:
             return QAGroup.parse_obj(doc[0])
         else:
-            id = uuid4()
-            self._groups_collection.insert_one(
-                {
-                    "all_answers": dto.all_answers,
-                    "all_extra": dto.all_extra,
-                    "id": id,
-                    "base_id": base_id,
-                },
-                session=session,
-            )
-            return QAGroup(
+            group = QAGroup(
                 all_answers=dto.all_answers,
                 all_extra=dto.all_extra,
-                id=id,
                 base_id=base_id,
             )
+            self._groups_collection.insert_one(
+                group.dict(),
+                session=session,
+            )
+            return group
 
     def get_or_create_qa(
         self, dto: QAAnswerDTO, session: ClientSession = None

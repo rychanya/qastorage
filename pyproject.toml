@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "qastorage"
+name = "storage"
 version = "0.1.0"
 description = ""
 authors = ["rychanya <rychanya@gmail.ru>"]
@@ -7,9 +7,16 @@ authors = ["rychanya <rychanya@gmail.ru>"]
 [tool.poetry.dependencies]
 python = "^3.9"
 pydantic = "^1.8.2"
+pymongo = "^4.0.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
+black = {version = "^21.12b0", allow-prereleases = true}
+isort = "^5.10.1"
+nox = "^2021.10.1"
+flake8 = "^4.0.1"
+testcontainers = "^3.4.2"
+coverage = "^6.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Union
+from typing import Union
 from uuid import UUID
 
 from pydantic import BaseModel, conlist, constr
@@ -23,11 +23,18 @@ class QABaseDTO(BaseModel):
 class QAGroupDTO(BaseModel):
     all_answers: ConStrList
     all_extra: list[ConStr] = []
-    base_id: Optional[UUID]
+
+
+class QAEmptyGroupDTO:
+    ...
 
 
 class QAAnswerDTO(BaseModel):
-    base: Union[UUID, QABaseDTO]
-    group: Union[None, UUID, QAGroupDTO]
     answer: ConStrList
     is_correct: bool
+
+
+class QADTO(BaseModel):
+    base: Union[UUID, QABaseDTO]
+    group: Union[None, UUID, QAGroupDTO]
+    answer: Union[UUID, QAAnswerDTO]

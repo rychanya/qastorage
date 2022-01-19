@@ -1,4 +1,5 @@
-from typing import Optional, Tuple
+from functools import wraps
+from typing import Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 from pydantic import BaseSettings
@@ -18,8 +19,22 @@ from storage.db_models import DBDTO, QAAnswer, QABase, QAGroup
 from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO, QATypeEnum
 
 
+def session_decorator(func):
+    @wraps(func)
+    def _session_decorator(self, *args, **kwargs):
+        session = kwargs.get("session")
+        if session is not None:
+            return func(self, *args, **kwargs)
+        else:
+            with self._client.start_session() as session:
+                with session.start_transaction():
+                    return func(self, *args, session=session, **kwargs)
+
+    return _session_decorator
+
+
 class MongoSettings(BaseSettings):
-    url: str = ""
+    url: Optional[str] = None
     db_name: str = ""
 
     class Config:
@@ -39,6 +54,14 @@ class MongoStore(AbstractStore):
     def _bases_collection(self) -> Collection:
         return self._db.get_collection(self.BASES_COLLECTION_NAME)
 
+    def get_or_create_base(
+        self, dto: Union[QABaseDTO, UUID], db_dto: DBDTO = None, **kwargs
+    ) -> DBDTO:
+        with self._client.start_session() as session:
+            with session.start_transaction():
+                return super().get_or_create_base(dto, db_dto, session=session)
+
+    @session_decorator
     def get_base_by_id(
         self, base_id: UUID, db_dto: DBDTO = None, session: ClientSession = None
     ) -> DBDTO:
@@ -46,11 +69,12 @@ class MongoStore(AbstractStore):
             db_dto = DBDTO()
         else:
             del db_dto.base
-        doc = self._bases_collection.find_one({"id": base_id}, session)
+        doc = self._bases_collection.find_one({"id": base_id}, session=session)
         if doc:
             db_dto.base = QABase.parse_obj(doc)
         return db_dto
 
+    @session_decorator
     def get_base(
         self, dto: QABaseDTO, db_dto: DBDTO = None, session: ClientSession = None
     ) -> DBDTO:
@@ -65,6 +89,7 @@ class MongoStore(AbstractStore):
             db_dto.base = QABase.parse_obj(doc)
         return db_dto
 
+    @session_decorator
     def create_base(
         self, dto: QABaseDTO, db_dto: DBDTO = None, session: ClientSession = None
     ) -> DBDTO:

@@ -2,7 +2,9 @@
     "python.formatting.provider": "black",
     "cSpell.words": [
         "DBDTO",
+        "dbpath",
         "isort",
+        "Popen",
         "prereleases",
         "pydantic",
         "pymongo",

@@ -63,9 +63,7 @@ def answer(
             answer = ["1"]
     elif base.type == QATypeEnum.MultipleChoice:
         if isinstance(group, QAGroup):
-            answer = random.choices(
-                group.all_answers, k=random.randint(1, len(group.all_answers))
-            )
+            answer = random.choices(group.all_answers, k=random.randint(1, len(group.all_answers)))
         else:
             answer = ["1", "2"]
     else:
@@ -75,9 +73,7 @@ def answer(
         else:
             answer = ["1", "2", "3", "4"]
     assert isinstance(request.param, bool)
-    return QAAnswer(
-        base_id=base.id, group_id=group_id, is_correct=request.param, answer=answer
-    )
+    return QAAnswer(base_id=base.id, group_id=group_id, is_correct=request.param, answer=answer)
 
 
 def test_create_db_dto(base, group, answer):

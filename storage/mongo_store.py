@@ -54,17 +54,17 @@ class MongoStore(AbstractStore):
     def _bases_collection(self) -> Collection:
         return self._db.get_collection(self.BASES_COLLECTION_NAME)
 
+    @session_decorator
     def get_or_create_base(
-        self, dto: Union[QABaseDTO, UUID], db_dto: DBDTO = None, **kwargs
+        self,
+        dto: Union[QABaseDTO, UUID],
+        db_dto: DBDTO = None,
+        session: ClientSession = None,
     ) -> DBDTO:
-        with self._client.start_session() as session:
-            with session.start_transaction():
-                return super().get_or_create_base(dto, db_dto, session=session)
+        return super().get_or_create_base(dto, db_dto, session=session)
 
     @session_decorator
-    def get_base_by_id(
-        self, base_id: UUID, db_dto: DBDTO = None, session: ClientSession = None
-    ) -> DBDTO:
+    def get_base_by_id(self, base_id: UUID, db_dto: DBDTO = None, session: ClientSession = None) -> DBDTO:
         if db_dto is None:
             db_dto = DBDTO()
         else:
@@ -75,24 +75,18 @@ class MongoStore(AbstractStore):
         return db_dto
 
     @session_decorator
-    def get_base(
-        self, dto: QABaseDTO, db_dto: DBDTO = None, session: ClientSession = None
-    ) -> DBDTO:
+    def get_base(self, dto: QABaseDTO, db_dto: DBDTO = None, session: ClientSession = None) -> DBDTO:
         if db_dto is None:
             db_dto = DBDTO()
         else:
             del db_dto.base
-        doc = self._bases_collection.find_one(
-            {"question": dto.question, "type": dto.type}, session=session
-        )
+        doc = self._bases_collection.find_one({"question": dto.question, "type": dto.type}, session=session)
         if doc:
             db_dto.base = QABase.parse_obj(doc)
         return db_dto
 
     @session_decorator
-    def create_base(
-        self, dto: QABaseDTO, db_dto: DBDTO = None, session: ClientSession = None
-    ) -> DBDTO:
+    def create_base(self, dto: QABaseDTO, db_dto: DBDTO = None, session: ClientSession = None) -> DBDTO:
         if db_dto is None:
             db_dto = DBDTO()
         else:

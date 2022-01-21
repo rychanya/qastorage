@@ -23,9 +23,7 @@ def mongo_client():
             ],
             stdout=subprocess.DEVNULL,
         ) as mongo:
-            subprocess.run(
-                ["mongosh", "--eval", "rs.initiate()"], stdout=subprocess.DEVNULL
-            )
+            subprocess.run(["mongosh", "--eval", "rs.initiate()"], stdout=subprocess.DEVNULL)
 
             yield
 

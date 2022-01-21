@@ -32,9 +32,7 @@ class QABasesDoNotMatch(Exception):
 
 class AbstractStore(abc.ABC):
     # Base
-    def get_or_create_base(
-        self, dto: Union[QABaseDTO, UUID], db_dto: DBDTO = None, **kwargs
-    ) -> DBDTO:
+    def get_or_create_base(self, dto: Union[QABaseDTO, UUID], db_dto: DBDTO = None, **kwargs) -> DBDTO:
         if db_dto is None:
             db_dto = DBDTO()
         else:
@@ -49,21 +47,15 @@ class AbstractStore(abc.ABC):
         return db_dto
 
     @abc.abstractmethod
-    def get_base_by_id(
-        self, base_id: UUID, db_dto: DBDTO = None, **kwargs
-    ) -> DBDTO:  # pragma: no cover
+    def get_base_by_id(self, base_id: UUID, db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
         ...
 
     @abc.abstractmethod
-    def get_base(
-        self, dto: QABaseDTO, db_dto: DBDTO = None, **kwargs
-    ) -> DBDTO:  # pragma: no cover
+    def get_base(self, dto: QABaseDTO, db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
         ...
 
     @abc.abstractmethod
-    def create_base(
-        self, dto: QABaseDTO, db_dto: DBDTO = None, **kwargs
-    ) -> DBDTO:  # pragma: no cover
+    def create_base(self, dto: QABaseDTO, db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
         ...
 
     # Group

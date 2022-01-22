@@ -11,7 +11,7 @@ def test_mongo(set_store_settings):
 
 
 def test_incorrect_storage_name(set_store_settings):
-    incorrect_storage_name = "incrrect"
+    incorrect_storage_name = "incorrect"
     assert incorrect_storage_name not in list(StoreType)
     set_store_settings(incorrect_storage_name)
 

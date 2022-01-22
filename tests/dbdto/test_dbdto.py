@@ -79,50 +79,40 @@ def answer(
 def test_create_db_dto(base, group, answer):
     dto = DBDTO(base=base, group=group, answer=answer)
     if base is None:
-        assert dto.is_base_loaded == False
+        assert dto.is_base_loaded is False
         with pytest.raises(ValueError):
             dto.base
     else:
-        assert dto.is_base_loaded == True
+        assert dto.is_base_loaded is True
         assert dto.base == base
         del dto.base
-        assert dto.is_base_loaded == False
+        assert dto.is_base_loaded is False
         with pytest.raises(ValueError):
             dto.base
 
     if group is None:
-        assert dto.is_group_loaded == False
+        assert dto.is_group_loaded is False
         with pytest.raises(ValueError):
             dto.group
     else:
-        assert dto.is_group_loaded == True
+        assert dto.is_group_loaded is True
         assert dto.group == group
         del dto.group
-        assert dto.is_group_loaded == False
+        assert dto.is_group_loaded is False
         with pytest.raises(ValueError):
             dto.group
 
     if answer is None:
-        assert dto.is_answer_loaded == False
+        assert dto.is_answer_loaded is False
         with pytest.raises(ValueError):
             dto.answer
     else:
-        assert dto.is_answer_loaded == True
+        assert dto.is_answer_loaded is True
         assert dto.answer == answer
         del dto.answer
-        assert dto.is_answer_loaded == False
+        assert dto.is_answer_loaded is False
         with pytest.raises(ValueError):
             dto.answer
-
-
-# def test_incorrect_set():
-#     dto = DBDTO()
-#     with pytest.raises(ValueError):
-#         dto.base = None  # type: ignore
-#     with pytest.raises(ValueError):
-#         dto.group = None  # type: ignore
-#     with pytest.raises(ValueError):
-#         dto.answer = None  # type: ignore
 
 
 def test_base_setter(base):
@@ -132,9 +122,9 @@ def test_base_setter(base):
         with pytest.raises(ValueError):
             dto.base = base
     else:
-        assert dto.is_base_loaded == False
+        assert dto.is_base_loaded is False
         dto.base = base
-        assert dto.is_base_loaded == True
+        assert dto.is_base_loaded is True
 
 
 def test_group_setter(group):
@@ -144,9 +134,9 @@ def test_group_setter(group):
         with pytest.raises(ValueError):
             dto.group = group
     else:
-        assert dto.is_group_loaded == False
+        assert dto.is_group_loaded is False
         dto.group = group
-        assert dto.is_group_loaded == True
+        assert dto.is_group_loaded is True
 
 
 def test_answer_setter(answer):
@@ -156,6 +146,55 @@ def test_answer_setter(answer):
         with pytest.raises(ValueError):
             dto.answer = answer
     else:
-        assert dto.is_answer_loaded == False
+        assert dto.is_answer_loaded is False
         dto.answer = answer
-        assert dto.is_answer_loaded == True
+        assert dto.is_answer_loaded is True
+
+
+def test_base_validate():
+    db_dto = DBDTO()
+    with pytest.raises(ValueError):
+        db_dto.validate_base()
+
+    db_dto.base = QABase(type=QATypeEnum.OnlyChoice, question="question")
+    assert db_dto.validate_base()
+
+
+@pytest.mark.parametrize(
+    "group_dict, type, raised",
+    [
+        ({"all_answers": ["1", "2"], "all_extra": []}, QATypeEnum.OnlyChoice, False),
+        ({"all_answers": ["1", "2"], "all_extra": ["5"]}, QATypeEnum.OnlyChoice, True),
+        ({"all_answers": ["1", "2"], "all_extra": ["5", "6"]}, QATypeEnum.MatchingChoice, False),
+        ({"all_answers": ["1", "2"], "all_extra": ["5", "6", "7"]}, QATypeEnum.MatchingChoice, True),
+    ],
+)
+def test_group_validate(group_dict: dict, type: QATypeEnum, raised: bool):
+    db_dto = DBDTO()
+    db_dto.base = QABase(type=type, question="question")
+    group = QAGroup(base_id=db_dto.base.id, **group_dict)
+    db_dto.group = group
+
+    if raised:
+        with pytest.raises(ValueError):
+            db_dto.validate_group()
+    else:
+        assert db_dto.validate_group()
+
+
+def test_empty_group_validate():
+    db_dto = DBDTO()
+    db_dto.base = QABase(type=QATypeEnum.OnlyChoice, question="question")
+    db_dto.group = QAEmptyGroup()
+
+    assert isinstance(db_dto.validate_group(), QAEmptyGroup)
+
+
+def test_incorrect_id_group_validate():
+    db_dto = DBDTO()
+    db_dto.base = QABase(type=QATypeEnum.OnlyChoice, question="question")
+    db_dto.group = QAGroup(base_id=uuid4(), all_answers=["1", "2"])
+    assert db_dto.base.id != db_dto.group.base_id
+
+    with pytest.raises(ValueError):
+        db_dto.validate_group()

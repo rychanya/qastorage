@@ -138,7 +138,7 @@ class DBDTO:
             return group
         if base.id != group.base_id:
             raise ValueError
-        if base.type != QATypeEnum.MatchingChoice and group.all_extra == []:
+        if base.type != QATypeEnum.MatchingChoice and group.all_extra != []:
             raise ValueError
         if base.type == QATypeEnum.MatchingChoice and len(group.all_answers) != len(group.all_extra):
             raise ValueError

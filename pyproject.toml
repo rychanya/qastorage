@@ -5,12 +5,12 @@ description = ""
 authors = ["rychanya <rychanya@gmail.ru>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10.2"
 pydantic = "^1.8.2"
 pymongo = "^4.0.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+pytest = "6.2.5"
 black = {version = "^21.12b0", allow-prereleases = true}
 isort = "^5.10.1"
 nox = "^2021.10.1"

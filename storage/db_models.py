@@ -143,3 +143,33 @@ class DBDTO:
         if base.type == QATypeEnum.MatchingChoice and len(group.all_answers) != len(group.all_extra):
             raise ValueError
         return group
+
+    def validate_answer(self) -> QAAnswer:
+        self.validate_group()
+        answer = self.answer
+        if self.base.id != answer.base_id:
+            raise ValueError
+        if answer.group_id:
+            if not isinstance(self.group, QAGroup) or self.group.id != answer.group_id:
+                raise ValueError
+        elif not isinstance(self.group, QAEmptyGroup):
+            raise ValueError
+
+        if self.base.type == QATypeEnum.OnlyChoice and len(answer.answer) != 1:
+            raise ValueError
+        if (
+            self.base.type == QATypeEnum.MatchingChoice
+            or self.base.type == QATypeEnum.RangingChoice
+            and len(answer.answer) < 2
+        ):
+            raise ValueError
+
+        if isinstance(self.group, QAGroup):
+            if self.base.type == QATypeEnum.OnlyChoice or self.base.type == QATypeEnum.MultipleChoice:
+                if not set(answer.answer).issubset(self.group.all_answers):
+                    raise ValueError
+            if self.base.type == QATypeEnum.MatchingChoice or self.base.type == QATypeEnum.RangingChoice:
+                if set(answer.answer) != set(self.group.all_answers):
+                    raise ValueError
+
+        return self.answer

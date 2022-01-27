@@ -1,10 +1,12 @@
 import subprocess
 from tempfile import TemporaryDirectory
+from typing import Optional
 
 import pytest
 
 from storage import StoreType
 from storage import get_store as get_storage
+from storage.db_models import DBDTO, QABase, QAEmptyGroup, QAGroup, QATypeEnum
 from storage.mongo_store import MongoStore
 
 
@@ -60,3 +62,89 @@ def set_store_settings(monkeypatch):
             monkeypatch.setenv("qa_storage_type", store_name)
 
     return _get_store
+
+
+class _TypesFixtureRequest(pytest.FixtureRequest):
+    param: Optional[str]
+
+
+class _GroupFixtureRequest(pytest.FixtureRequest):
+    param: Optional[bool]
+
+
+@pytest.fixture(params=[None, *QATypeEnum])
+def types_or_none(request: _TypesFixtureRequest):
+    return request.param
+
+
+@pytest.fixture(params=[*QATypeEnum])
+def types(request: _TypesFixtureRequest):
+    return request.param
+
+
+@pytest.fixture
+def base_or_none(types_or_none):
+    if types_or_none is None:
+        return None
+    return QABase(type=types_or_none, question="question")
+
+
+@pytest.fixture
+def base(types):
+    return QABase(type=types, question="question")
+
+
+@pytest.fixture(params=[True, False])
+def group_or_none(request: _GroupFixtureRequest, base_or_none: Optional[QABase]):
+    if request.param:
+        if base_or_none is None:
+            return
+        if base_or_none.type == QATypeEnum.MatchingChoice:
+            extra = ["extra_1", "extra_2", "extra_3", "extra_4"]
+        else:
+            extra = []
+        return QAGroup(
+            base_id=base_or_none.id,
+            all_answers=[
+                "answer_1",
+                "answer_2",
+                "answer_3",
+                "answer_4",
+            ],
+            all_extra=extra,
+        )
+    else:
+        return QAEmptyGroup()
+
+
+@pytest.fixture(params=[True, False])
+def group(request: _GroupFixtureRequest, base: QABase):
+    if request.param:
+        if base.type == QATypeEnum.MatchingChoice:
+            extra = ["extra_1", "extra_2", "extra_3", "extra_4"]
+        else:
+            extra = []
+        return QAGroup(
+            base_id=base.id,
+            all_answers=[
+                "answer_1",
+                "answer_2",
+                "answer_3",
+                "answer_4",
+            ],
+            all_extra=extra,
+        )
+    else:
+        return QAEmptyGroup()
+
+
+@pytest.fixture
+def db_dto_fixture_or_none(base_or_none, group_or_none):
+    if base_or_none is None and group_or_none is None:
+        return None
+    return DBDTO(base=base_or_none, group=group_or_none)
+
+
+@pytest.fixture
+def db_dto_fixture(base, group):
+    return DBDTO(base=base, group=group)

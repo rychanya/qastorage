@@ -1,33 +1,9 @@
 import abc
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 from uuid import UUID
 
-from storage.db_models import DBDTO, QAAnswer, QABase, QAGroup
-from storage.dto import QADTO, QAAnswerDTO, QABaseDTO, QAGroupDTO, QATypeEnum
-
-
-class QAStoreException(Exception):
-    ...
-
-
-class QABaseNotExist(Exception):
-    ...
-
-
-class QAGroupNotExist(Exception):
-    ...
-
-
-class QAAnswerNotExist(Exception):
-    ...
-
-
-class QAAnswerValidation(Exception):
-    ...
-
-
-class QABasesDoNotMatch(Exception):
-    ...
+from storage.db_models import DBDTO, QAEmptyGroup, QAGroup
+from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO
 
 
 class AbstractStore(abc.ABC):
@@ -59,94 +35,67 @@ class AbstractStore(abc.ABC):
         ...
 
     # Group
-    # def get_or_create_group(
-    #     self,
-    #     dto: Union[QAGroupDTO, UUID, None],
-    #     base_id: UUID,
-    #     db_dto: DBDTO = None,
-    #     **kwargs
-    # ) -> DBDTO:
-    #     if db_dto is None:
-    #         db_dto = DBDTO()
-    #     if not db_dto.is_base_loaded:
-    #         self.get_base_by_id(base_id=base_id, db_dto=db_dto, *kwargs)
-    #     if dto is None:
-    #         db_dto.group = None
-    #         return db_dto
-    #     if isinstance(dto, UUID):
-    #         self.get_group_by_id(dto, db_dto, **kwargs)
-    #         if db_dto.base and db_dto.base.id != base_id:
-    #             raise QABasesDoNotMatch
-    #         return db_dto
-    #     self.get_group(dto, base_id, db_dto, **kwargs)
-    #     if db_dto.is_group_loaded:
-    #         return db_dto
-    #     else:
-    #         return self.create_group(dto, base_id, db_dto, **kwargs)
+    def get_or_create_group(self, dto: Union[QAGroupDTO, UUID, None], db_dto: DBDTO = None, **kwargs) -> DBDTO:
+        if db_dto is None:
+            db_dto = DBDTO()
+        else:
+            del db_dto.group
+        if isinstance(dto, UUID):
+            self.get_group_by_id(dto, db_dto=db_dto, **kwargs)
+            if isinstance(db_dto.group, QAGroup) and not db_dto.is_base_loaded:
+                self.get_base_by_id(db_dto.group.base_id, db_dto=db_dto, **kwargs)
+        else:
+            self.get_group(dto, db_dto=db_dto, **kwargs)
+            if not db_dto.is_group_loaded and dto:
+                self.create_group(dto, db_dto=db_dto, **kwargs)
+        db_dto.validate_group()
+        return db_dto
 
-    # @abc.abstractmethod
-    # def get_group_by_id(
-    #     self, group_id: Optional[UUID], db_dto: DBDTO = None, **kwargs
-    # ) -> DBDTO:  # pragma: no cover
-    #     ...
+    @abc.abstractmethod
+    def get_group_by_id(self, group_id: UUID, db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
+        ...
 
-    # @abc.abstractmethod
-    # def get_group(
-    #     self, dto: QAGroupDTO, base_id: UUID, db_dto: DBDTO = None, **kwargs
-    # ) -> DBDTO:  # pragma: no cover
-    #     ...
+    @abc.abstractmethod
+    def get_group(self, dto: Optional[QAGroupDTO], db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
+        ...
 
-    # @abc.abstractmethod
-    # def create_group(
-    #     self, dto: QAGroupDTO, base_id: UUID, db_dto: DBDTO = None, **kwargs
-    # ) -> DBDTO:  # pragma: no cover
-    #     ...
+    @abc.abstractmethod
+    def create_group(self, dto: QAGroupDTO, db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
+        ...
 
-    # # Answer
-    # def get_or_create_answer(
-    #     self,
-    #     dto: Union[UUID, QAAnswer],
-    #     base_id: UUID,
-    #     group_id: Optional[UUID],
-    #     db_dto:DBDTO=None,
-    #     **kwargs
-    # ) -> DBDTO:
-    #     if db_dto is None:
-    #         db_dto = DBDTO()
-    #     if not db_dto.is_base_loaded:
-    #         self.get_base_by_id(base_id, db_dto, **kwargs)
-    #     if not db_dto.is_group_loaded:
-    #         self.get_group_by_id(group_id, db_dto, **kwargs)
-    #     if isinstance(dto, UUID):
-    #         self.get_answer_by_id(dto, db_dto, **kwargs)
+    # Answer
+    def get_or_create_answer(self, dto: Union[UUID, QAAnswerDTO], db_dto: DBDTO = None, **kwargs) -> DBDTO:
+        if db_dto is None:
+            db_dto = DBDTO()
+        else:
+            del db_dto.answer
+        if isinstance(dto, UUID):
+            self.get_answer_by_id(dto, db_dto=db_dto, *kwargs)
+            if not db_dto.is_group_loaded:
+                if db_dto.answer.group_id:
+                    self.get_group_by_id(db_dto.answer.group_id, db_dto=db_dto, **kwargs)
+                else:
+                    db_dto.group = QAEmptyGroup()
+            if not db_dto.is_base_loaded:
+                self.get_base_by_id(db_dto.answer.base_id, db_dto=db_dto, **kwargs)
+        else:
+            self.get_answer(dto, db_dto=db_dto, *kwargs)
+            if not db_dto.is_answer_loaded:
+                self.create_answer(dto, db_dto=db_dto, *kwargs)
+        db_dto.validate_answer()
+        return db_dto
 
-    # @abc.abstractmethod
-    # def get_answer_by_id(
-    #     self, answer_id: UUID, db_dto:DBDTO=None, **kwargs
-    # ) -> DBDTO:  # pragma: no cover
-    #     ...
+    @abc.abstractmethod
+    def get_answer_by_id(self, answer_id: UUID, db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
+        ...
 
-    # @abc.abstractmethod
-    # def get_answer(
-    #     self,
-    #     dto: QAAnswerDTO,
-    #     base_id: UUID,
-    #     group_id: Optional[UUID],
-    #     db_dto:DBDTO=None,
-    #     **kwargs
-    # ) -> DBDTO:  # pragma: no cover
-    #     ...
+    @abc.abstractmethod
+    def get_answer(self, dto: QAAnswerDTO, db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
+        ...
 
-    # @abc.abstractmethod
-    # def create_answer(
-    #     self,
-    #     dto: QAAnswerDTO,
-    #     base_id: UUID,
-    #     group_id: Optional[UUID],
-    #     db_dto:DBDTO=None,
-    #     **kwargs
-    # ) -> QAAnswer:  # pragma: no cover
-    #     ...
+    @abc.abstractmethod
+    def create_answer(self, dto: QAAnswerDTO, db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
+        ...
 
     # # qa
     # @abc.abstractmethod
@@ -160,27 +109,3 @@ class AbstractStore(abc.ABC):
     #     self, answer_id: UUID, group_id: UUID, **kwargs
     # ):  # pragma: no cover
     #     ...
-
-    # def validate_answer_in_group(
-    #     self,
-    #     base: QABase,
-    #     answer: Union[QAAnswer, QAAnswerDTO],
-    #     group: Optional[QAGroup],
-    # ):
-    #     if group is None:
-    #         return
-
-    #     if base.type == QATypeEnum.OnlyChoice:
-    #         if len(answer.answer) != 1 or answer.answer[0] not in group.all_answers:
-    #             raise QAAnswerValidation
-
-    #     if base.type == QATypeEnum.MultipleChoice:
-    #         if not set(answer.answer).issubset(group.all_answers):
-    #             raise QAAnswerValidation
-
-    #     if (
-    #         base.type == QATypeEnum.RangingChoice
-    #         or base.type == QATypeEnum.MatchingChoice
-    #     ):
-    #         if set(answer.answer) != set(group.all_answers):
-    #             raise QAAnswerValidation

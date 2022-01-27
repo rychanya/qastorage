@@ -1,22 +1,15 @@
 from functools import wraps
-from typing import Optional, Tuple, Union
-from uuid import UUID, uuid4
+from typing import Optional, Union
+from uuid import UUID
 
 from pydantic import BaseSettings
 from pymongo import MongoClient
 from pymongo.client_session import ClientSession
 from pymongo.collection import Collection
 
-from storage.base_store import (
-    AbstractStore,
-    QAAnswerNotExist,
-    QABaseNotExist,
-    QABasesDoNotMatch,
-    QAGroupNotExist,
-    QAStoreException,
-)
-from storage.db_models import DBDTO, QAAnswer, QABase, QAGroup
-from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO, QATypeEnum
+from storage.base_store import AbstractStore
+from storage.db_models import DBDTO, QAAnswer, QABase, QAEmptyGroup, QAGroup
+from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO
 
 
 def session_decorator(func):
@@ -98,64 +91,67 @@ class MongoStore(AbstractStore):
         return db_dto
 
     # Group
-    # GROUPS_COLLECTION_NAME = "Groups"
+    GROUPS_COLLECTION_NAME = "Groups"
 
-    # @property
-    # def _groups_collection(self) -> Collection:
-    #     return self._db.get_collection(self.GROUPS_COLLECTION_NAME)
+    @property
+    def _groups_collection(self) -> Collection:
+        return self._db.get_collection(self.GROUPS_COLLECTION_NAME)
 
-    # def get_group_by_id(self, group_id: UUID, session: ClientSession = None) -> QAGroup:
-    #     doc = self._groups_collection.find_one({"id": group_id}, session=session)
-    #     if doc is None:
-    #         raise QAGroupNotExist
-    #     return QAGroup.parse_obj(doc)
+    @session_decorator
+    def get_or_create_group(
+        self, dto: Union[QAGroupDTO, UUID, None], db_dto: DBDTO = None, session: ClientSession = None
+    ) -> DBDTO:
+        return super().get_or_create_group(dto, db_dto, session=session)
 
-    # def get_group(
-    #     self,
-    #     dto: QAGroupDTO,
-    #     base_id: UUID,
-    #     base: QABase = None,
-    #     session: ClientSession = None,
-    # ) -> Optional[QAGroup]:
-    #     if base is None:
-    #         base = self.get_base_by_id(base_id, session=session)
-    #     doc = list(
-    #         self._groups_collection.aggregate(
-    #             pipeline=[
-    #                 {"$match": {"base_id": base_id}},
-    #                 {
-    #                     "$match": {
-    #                         "$expr": {"$setEquals": ["$all_answers", dto.all_answers]}
-    #                     }
-    #                 },
-    #                 {
-    #                     "$match": {
-    #                         "$expr": {"$setEquals": ["$all_extra", dto.all_extra]}
-    #                     }
-    #                 },
-    #             ],
-    #             session=session,
-    #         )
-    #     )
-    #     if doc:
-    #         return QAGroup.parse_obj(doc[0])
-    #     else:
-    #         return None
+    @session_decorator
+    def get_group_by_id(self, group_id: UUID, db_dto: DBDTO = None, session: ClientSession = None) -> DBDTO:
+        if db_dto is None:
+            db_dto = DBDTO()
+        else:
+            del db_dto.group
+        doc = self._groups_collection.find_one({"id": group_id}, session=session)
+        if doc:
+            db_dto.group = QAGroup.parse_obj(doc)
+        return db_dto
 
-    # def create_group(
-    #     self,
-    #     dto: QAGroupDTO,
-    #     base_id: UUID,
-    #     base: QABase = None,
-    #     session: ClientSession = None,
-    # ) -> QAGroup:
-    #     if base is None:
-    #         base = self.get_base_by_id(base_id, session=session)
-    #     group = QAGroup(
-    #         all_answers=dto.all_answers, all_extra=dto.all_extra, base_id=base_id
-    #     )
-    #     self._groups_collection.insert_one(group.dict(), session=session)
-    #     return group
+    @session_decorator
+    def get_group(self, dto: Optional[QAGroupDTO], db_dto: DBDTO = None, session: ClientSession = None) -> DBDTO:
+        if db_dto is None:
+            db_dto = DBDTO()
+        else:
+            del db_dto.group
+        if dto is None:
+            db_dto.group = QAEmptyGroup()
+            return db_dto
+        pipeline = [
+            {"$match": {"$expr": {"$setEquals": ["$all_answers", dto.all_answers]}}},
+            {"$match": {"$expr": {"$setEquals": ["$all_extra", dto.all_extra]}}}
+            if dto.all_extra
+            else {"$match": {"all_extra": dto.all_extra}},
+        ]
+        if db_dto.is_base_loaded:
+            pipeline = [{"$match": {"base_id": db_dto.base.id}}, *pipeline]
+        docs = list(self._groups_collection.aggregate(pipeline=pipeline, session=session))
+        if docs:
+            db_dto.group = QAGroup.parse_obj(docs[0])
+        if db_dto.is_group_loaded and isinstance(db_dto.group, QAGroup) and not db_dto.is_base_loaded:
+            self.get_base_by_id(db_dto.group.base_id, db_dto=db_dto, session=session)
+        return db_dto
+
+    @session_decorator
+    def create_group(self, dto: QAGroupDTO, db_dto: DBDTO = None, session: ClientSession = None) -> DBDTO:
+        if db_dto is None:
+            db_dto = DBDTO()
+        else:
+            del db_dto.group
+        db_dto.validate_base()
+        group = QAGroup(base_id=db_dto.base.id, all_answers=dto.all_answers, all_extra=dto.all_extra)
+        db_dto.group = group
+        db_dto.validate_group()
+        if self._bases_collection.count_documents(db_dto.base.dict(), session=session) != 1:
+            raise ValueError
+        self._groups_collection.insert_one(db_dto.group.dict(), session=session)
+        return db_dto
 
     # def get_or_create_qa(
     #     self, dto: QAAnswerDTO, session: ClientSession = None
@@ -224,11 +220,29 @@ class MongoStore(AbstractStore):
     #         raise QAStoreException
 
     # # Answer
-    # ANSWERS_COLLECTION_NAME = "Answers"
+    ANSWERS_COLLECTION_NAME = "Answers"
 
-    # @property
-    # def _answers_collection(self) -> Collection:
-    #     return self._db.get_collection(self.ANSWERS_COLLECTION_NAME)
+    @property
+    def _answers_collection(self) -> Collection:
+        return self._db.get_collection(self.ANSWERS_COLLECTION_NAME)
+
+    @session_decorator
+    def get_or_create_answer(
+        self, dto: Union[UUID, QAAnswerDTO], db_dto: DBDTO = None, session: ClientSession = None
+    ) -> DBDTO:
+        return super().get_or_create_answer(dto, db_dto, session=session)
+
+    @session_decorator
+    def get_answer_by_id(self, answer_id: UUID, db_dto: DBDTO = None, session: ClientSession = None) -> DBDTO:
+        ...
+
+    @session_decorator
+    def get_answer(self, dto: QAAnswerDTO, db_dto: DBDTO = None, session: ClientSession = None) -> DBDTO:
+        ...
+
+    @session_decorator
+    def create_answer(self, dto: QAAnswerDTO, db_dto: DBDTO = None, session: ClientSession = None) -> DBDTO:
+        ...
 
     # def get_answer_by_id(
     #     self, answer_id: UUID, session: ClientSession = None

@@ -1,153 +1,85 @@
-import random
-from typing import Optional, Union
+from typing import Union
 from uuid import uuid4
 
 import pytest
-from _pytest.fixtures import FixtureRequest as _FixtureRequest
 
-from storage.db_models import (
-    DBDTO,
-    ConStr,
-    QAAnswer,
-    QABase,
-    QAEmptyGroup,
-    QAGroup,
-    QATypeEnum,
-)
+from storage.db_models import DBDTO, QAAnswer, QABase, QAEmptyGroup, QAGroup, QATypeEnum
 
 base_id = uuid4()
 
 
-class FixtureRequest(_FixtureRequest):
-    param: Union[QAEmptyGroup, None, str, list[ConStr], bool]
-
-
-@pytest.fixture(params=[None, *list(QATypeEnum)])
-def base(request: FixtureRequest):
-    if request.param is None:
-        return None
-    else:
-        assert isinstance(request.param, QATypeEnum)
-        return QABase(type=request.param, question="question")
-
-
-@pytest.fixture(params=[None, QAEmptyGroup(), ["1", "2", "3"]])
-def group(request: FixtureRequest, base: Optional[QABase]):
-    if base is None:
-        return None
-    if request.param is None:
-        return None
-    elif isinstance(request.param, QAEmptyGroup):
-        return request.param
-    else:
-        assert isinstance(request.param, list)
-        QAGroup(base_id=base.id, all_answers=request.param)
-
-
-@pytest.fixture(params=[False, True])
-def answer(
-    request: FixtureRequest,
-    base: Optional[QABase],
-    group: Union[QAGroup, QAEmptyGroup, None],
-):
-    if base is None:
-        return None
-    if group is None or isinstance(group, QAEmptyGroup):
-        group_id = None
-    else:
-        group_id = group.id
-    if base.type == QATypeEnum.OnlyChoice:
-        if isinstance(group, QAGroup):
-            answer = [random.choice(group.all_answers)]
-        else:
-            answer = ["1"]
-    elif base.type == QATypeEnum.MultipleChoice:
-        if isinstance(group, QAGroup):
-            answer = random.choices(group.all_answers, k=random.randint(1, len(group.all_answers)))
-        else:
-            answer = ["1", "2"]
-    else:
-        if isinstance(group, QAGroup):
-            answer = group.all_answers.copy()
-            random.shuffle(answer)
-        else:
-            answer = ["1", "2", "3", "4"]
-    assert isinstance(request.param, bool)
-    return QAAnswer(base_id=base.id, group_id=group_id, is_correct=request.param, answer=answer)
-
-
-def test_create_db_dto(base, group, answer):
-    dto = DBDTO(base=base, group=group, answer=answer)
-    if base is None:
+def test_create_db_dto(base_or_none, group_or_none, answer_or_none):
+    dto = DBDTO(base=base_or_none, group=group_or_none, answer=answer_or_none)
+    if base_or_none is None:
         assert dto.is_base_loaded is False
         with pytest.raises(ValueError):
             dto.base
     else:
         assert dto.is_base_loaded is True
-        assert dto.base == base
+        assert dto.base == base_or_none
         del dto.base
         assert dto.is_base_loaded is False
         with pytest.raises(ValueError):
             dto.base
 
-    if group is None:
+    if group_or_none is None:
         assert dto.is_group_loaded is False
         with pytest.raises(ValueError):
             dto.group
     else:
         assert dto.is_group_loaded is True
-        assert dto.group == group
+        assert dto.group == group_or_none
         del dto.group
         assert dto.is_group_loaded is False
         with pytest.raises(ValueError):
             dto.group
 
-    if answer is None:
+    if answer_or_none is None:
         assert dto.is_answer_loaded is False
         with pytest.raises(ValueError):
             dto.answer
     else:
         assert dto.is_answer_loaded is True
-        assert dto.answer == answer
+        assert dto.answer == answer_or_none
         del dto.answer
         assert dto.is_answer_loaded is False
         with pytest.raises(ValueError):
             dto.answer
 
 
-def test_base_setter(base):
+def test_base_setter(base_or_none):
     dto = DBDTO()
 
-    if base is None:
+    if base_or_none is None:
         with pytest.raises(ValueError):
-            dto.base = base
+            dto.base = base_or_none
     else:
         assert dto.is_base_loaded is False
-        dto.base = base
+        dto.base = base_or_none
         assert dto.is_base_loaded is True
 
 
-def test_group_setter(group):
+def test_group_setter(group_or_none):
     dto = DBDTO()
 
-    if group is None:
+    if group_or_none is None:
         with pytest.raises(ValueError):
-            dto.group = group
+            dto.group = group_or_none
     else:
         assert dto.is_group_loaded is False
-        dto.group = group
+        dto.group = group_or_none
         assert dto.is_group_loaded is True
 
 
-def test_answer_setter(answer):
+def test_answer_setter(answer_or_none):
     dto = DBDTO()
 
-    if answer is None:
+    if answer_or_none is None:
         with pytest.raises(ValueError):
-            dto.answer = answer
+            dto.answer = answer_or_none
     else:
         assert dto.is_answer_loaded is False
-        dto.answer = answer
+        dto.answer = answer_or_none
         assert dto.is_answer_loaded is True
 
 
@@ -198,3 +130,11 @@ def test_incorrect_id_group_validate():
 
     with pytest.raises(ValueError):
         db_dto.validate_group()
+
+
+def test_normal_validate(base: QABase, group: Union[QAGroup, QAEmptyGroup], answer: QAAnswer):
+    dto = DBDTO(base=base, group=group, answer=answer)
+    if base is not None and group is not None and answer is not None:
+        dto.validate_base()
+        dto.validate_group()
+        dto.validate_answer()

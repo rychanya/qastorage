@@ -1,12 +1,13 @@
+import random
 import subprocess
 from tempfile import TemporaryDirectory
-from typing import Optional
+from typing import Optional, Union
 
 import pytest
 
 from storage import StoreType
 from storage import get_store as get_storage
-from storage.db_models import DBDTO, QABase, QAEmptyGroup, QAGroup, QATypeEnum
+from storage.db_models import DBDTO, QAAnswer, QABase, QAEmptyGroup, QAGroup, QATypeEnum
 from storage.mongo_store import MongoStore
 
 
@@ -69,6 +70,10 @@ class _TypesFixtureRequest(pytest.FixtureRequest):
 
 
 class _GroupFixtureRequest(pytest.FixtureRequest):
+    param: Optional[bool]
+
+
+class _AnswerFixtureRequest(pytest.FixtureRequest):
     param: Optional[bool]
 
 
@@ -139,12 +144,48 @@ def group(request: _GroupFixtureRequest, base: QABase):
 
 
 @pytest.fixture
-def db_dto_fixture_or_none(base_or_none, group_or_none):
-    if base_or_none is None and group_or_none is None:
+def answer_list(types: str, group: Union[QAGroup, QAEmptyGroup]):
+    if isinstance(group, QAEmptyGroup):
+        all_answers = ["1", "2", "3", "4"]
+    else:
+        all_answers = group.all_answers
+    if types == QATypeEnum.OnlyChoice:
+        return random.choices(all_answers, k=1)
+    elif types == QATypeEnum.MultipleChoice:
+        return random.choices(all_answers, k=random.randint(1, len(all_answers)))
+    elif types == QATypeEnum.MatchingChoice or types == QATypeEnum.RangingChoice:
+        answer = all_answers.copy()
+        random.shuffle(answer)
+        return answer
+    else:
+        raise ValueError
+
+
+@pytest.fixture(params=[False, True])
+def answer(request: _AnswerFixtureRequest, base: QABase, group: Union[QAGroup, QAEmptyGroup], answer_list):
+    group_id = group.id if isinstance(group, QAGroup) else None
+    assert request.param is not None
+    return QAAnswer(base_id=base.id, group_id=group_id, is_correct=request.param, answer=answer_list)
+
+
+@pytest.fixture(params=[False, True])
+def answer_or_none(
+    request: _AnswerFixtureRequest, base: Optional[QABase], group: Union[QAGroup, QAEmptyGroup, None], answer_list
+):
+    if base is None or group is None:
+        return None
+    group_id = group.id if isinstance(group, QAGroup) else None
+    assert request.param is not None
+    return QAAnswer(base_id=base.id, group_id=group_id, is_correct=request.param, answer=answer_list)
+
+
+@pytest.fixture
+def db_dto_fixture_or_none(base_or_none, group_or_none, answer_or_none):
+    if base_or_none is None and group_or_none is None and answer_or_none is None:
         return None
     return DBDTO(base=base_or_none, group=group_or_none)
 
 
 @pytest.fixture
-def db_dto_fixture(base, group):
-    return DBDTO(base=base, group=group)
+def db_dto_fixture(base, group, answer):
+    return DBDTO(base=base, group=group, answer=answer)

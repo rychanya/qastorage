@@ -157,11 +157,9 @@ class DBDTO:
 
         if self.base.type == QATypeEnum.OnlyChoice and len(answer.answer) != 1:
             raise ValueError
-        if (
-            self.base.type == QATypeEnum.MatchingChoice
-            or self.base.type == QATypeEnum.RangingChoice
-            and len(answer.answer) < 2
-        ):
+        if (self.base.type == QATypeEnum.MatchingChoice or self.base.type == QATypeEnum.RangingChoice) and len(
+            answer.answer
+        ) < 2:
             raise ValueError
 
         if isinstance(self.group, QAGroup):

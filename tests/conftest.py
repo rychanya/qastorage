@@ -7,7 +7,9 @@ import pytest
 
 from storage import StoreType
 from storage import get_store as get_storage
+from storage.base_store import AbstractStore
 from storage.db_models import DBDTO, QAAnswer, QABase, QAEmptyGroup, QAGroup, QATypeEnum
+from storage.dto import QAAnswerDTO, QABaseDTO, QAGroupDTO
 from storage.mongo_store import MongoStore
 
 
@@ -191,3 +193,48 @@ def db_dto_fixture_or_none(base_or_none, group_or_none, answer_or_none):
 @pytest.fixture
 def db_dto_fixture(base, group, answer):
     return DBDTO(base=base, group=group, answer=answer)
+
+
+@pytest.fixture
+def save_base(base: QABase):
+    def _save_base(store: AbstractStore, _db_dto: DBDTO):
+        store.create_base(QABaseDTO(question=base.question, type=base.type), db_dto=_db_dto)
+        return _db_dto
+
+    return _save_base
+
+
+@pytest.fixture
+def save_group(group: QAGroup):
+    def _save_group(store: AbstractStore, _db_dto: DBDTO):
+        if isinstance(group, QAGroup):
+            store.create_group(
+                QAGroupDTO(all_answers=group.all_answers, all_extra=group.all_extra),
+                db_dto=_db_dto,
+            )
+        else:
+            _db_dto.group = QAEmptyGroup()
+        return _db_dto
+
+    return _save_group
+
+
+@pytest.fixture
+def save_answer(answer: QAAnswer):
+    def _save_answer(store: AbstractStore, _db_dto: DBDTO):
+        store.create_answer(QAAnswerDTO(answer=answer.answer, is_correct=answer.is_correct), db_dto=_db_dto)
+        return _db_dto
+
+    return _save_answer
+
+
+@pytest.fixture
+def save_db_dto(save_base, save_group, save_answer):
+    def _save_db_dto(store: AbstractStore):
+        _db_dto = DBDTO()
+        save_base(store, _db_dto)
+        save_group(store, _db_dto)
+        save_answer(store, _db_dto)
+        return _db_dto
+
+    return _save_db_dto

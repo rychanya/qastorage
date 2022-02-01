@@ -74,7 +74,7 @@ class _GroupFixtureRequest(pytest.FixtureRequest):
 
 
 class _AnswerFixtureRequest(pytest.FixtureRequest):
-    param: Optional[bool]
+    param: bool
 
 
 @pytest.fixture(params=[None, *QATypeEnum])
@@ -170,13 +170,15 @@ def answer(request: _AnswerFixtureRequest, base: QABase, group: Union[QAGroup, Q
 
 @pytest.fixture(params=[False, True])
 def answer_or_none(
-    request: _AnswerFixtureRequest, base: Optional[QABase], group: Union[QAGroup, QAEmptyGroup, None], answer_list
+    request: _AnswerFixtureRequest,
+    base_or_none: Optional[QABase],
+    group_or_none: Union[QAGroup, QAEmptyGroup, None],
+    answer_list,
 ):
-    if base is None or group is None:
+    if base_or_none is None or group_or_none is None:
         return None
-    group_id = group.id if isinstance(group, QAGroup) else None
-    assert request.param is not None
-    return QAAnswer(base_id=base.id, group_id=group_id, is_correct=request.param, answer=answer_list)
+    group_id = group_or_none.id if isinstance(group_or_none, QAGroup) else None
+    return QAAnswer(base_id=base_or_none.id, group_id=group_id, is_correct=request.param, answer=answer_list)
 
 
 @pytest.fixture

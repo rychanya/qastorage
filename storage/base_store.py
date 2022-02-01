@@ -96,16 +96,3 @@ class AbstractStore(abc.ABC):
     @abc.abstractmethod
     def create_answer(self, dto: QAAnswerDTO, db_dto: DBDTO = None, **kwargs) -> DBDTO:  # pragma: no cover
         ...
-
-    # # qa
-    # @abc.abstractmethod
-    # def get_or_create_qa(
-    #     self, dto: QAAnswerDTO, **kwargs
-    # ) -> Tuple[QAAnswer, bool]:  # pragma: no cover
-    #     ...
-
-    # @abc.abstractmethod
-    # def add_group_to_answer(
-    #     self, answer_id: UUID, group_id: UUID, **kwargs
-    # ):  # pragma: no cover
-    #     ...

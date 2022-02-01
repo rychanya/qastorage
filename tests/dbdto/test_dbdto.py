@@ -134,7 +134,65 @@ def test_incorrect_id_group_validate():
 
 def test_normal_validate(base: QABase, group: Union[QAGroup, QAEmptyGroup], answer: QAAnswer):
     dto = DBDTO(base=base, group=group, answer=answer)
-    if base is not None and group is not None and answer is not None:
-        dto.validate_base()
-        dto.validate_group()
+    dto.validate_base()
+    dto.validate_group()
+    dto.validate_answer()
+
+
+def test_answer_validate_base_id_not_equals(base: QABase, group: Union[QAGroup, QAEmptyGroup], answer: QAAnswer):
+    dto = DBDTO(base=base, group=group, answer=answer)
+    dto.base.id = uuid4()
+    assert dto.base.id != dto.answer.base_id
+    with pytest.raises(ValueError):
         dto.validate_answer()
+
+
+def test_answer_validate_incorrect(base: QABase, group: Union[QAGroup, QAEmptyGroup], answer: QAAnswer):
+    dto0 = DBDTO(
+        base=base.copy(), group=group.copy() if isinstance(group, QAGroup) else QAEmptyGroup(), answer=answer.copy()
+    )
+    if dto0.base.type == QATypeEnum.OnlyChoice:
+        dto0.answer.answer.append("wrong answer1")
+        assert len(dto0.answer.answer) != 1
+        with pytest.raises(ValueError):
+            print(dto0.base, dto0.group, dto0.answer)
+            dto0.validate_answer()
+    if dto0.base.type == QATypeEnum.RangingChoice or dto0.base.type == QATypeEnum.MatchingChoice:
+        dto0.answer.answer = ["wrong answer1"]
+        assert len(dto0.answer.answer)
+        with pytest.raises(ValueError):
+            print(dto0.base, dto0.group, dto0.answer)
+            dto0.validate_answer()
+
+    if isinstance(group, QAEmptyGroup):
+        return
+
+    dto1 = DBDTO(base=base.copy(), group=group.copy(), answer=answer.copy())
+    assert isinstance(dto1.group, QAGroup)
+    dto1.group.id = uuid4()
+    assert dto1.group.id != dto1.answer.group_id
+    with pytest.raises(ValueError):
+        dto1.validate_answer()
+
+    dto2 = DBDTO(base=base.copy(), group=QAEmptyGroup(), answer=answer.copy())
+    assert isinstance(dto2.group, QAEmptyGroup)
+    assert dto2.answer.group_id
+    with pytest.raises(ValueError):
+        dto2.validate_answer()
+
+    dto3 = DBDTO(base=base.copy(), group=group.copy(), answer=answer.copy())
+    dto3.answer.group_id = None
+    assert not isinstance(dto3.group, QAEmptyGroup)
+    with pytest.raises(ValueError):
+        dto3.validate_answer()
+
+    dto4 = DBDTO(base=base.copy(), group=group.copy(), answer=answer.copy())
+    assert isinstance(dto4.group, QAGroup)
+    if dto4.base.type == QATypeEnum.OnlyChoice or dto4.base.type == QATypeEnum.MultipleChoice:
+        dto4.answer.answer = ["wrong answer1"]
+        assert not set(dto4.answer.answer).issubset(dto4.group.all_answers)
+    if dto4.base.type == QATypeEnum.MatchingChoice or dto4.base.type == QATypeEnum.RangingChoice:
+        dto4.answer.answer.append("wrong answer1")
+        assert set(dto4.answer.answer) != set(dto4.group.all_answers)
+    with pytest.raises(ValueError):
+        dto4.validate_answer()

@@ -70,7 +70,7 @@ class AbstractStore(abc.ABC):
         else:
             del db_dto.answer
         if isinstance(dto, UUID):
-            self.get_answer_by_id(dto, db_dto=db_dto, *kwargs)
+            self.get_answer_by_id(dto, db_dto=db_dto, **kwargs)
             if not db_dto.is_group_loaded:
                 if db_dto.answer.group_id:
                     self.get_group_by_id(db_dto.answer.group_id, db_dto=db_dto, **kwargs)
@@ -79,9 +79,9 @@ class AbstractStore(abc.ABC):
             if not db_dto.is_base_loaded:
                 self.get_base_by_id(db_dto.answer.base_id, db_dto=db_dto, **kwargs)
         else:
-            self.get_answer(dto, db_dto=db_dto, *kwargs)
+            self.get_answer(dto, db_dto=db_dto, **kwargs)
             if not db_dto.is_answer_loaded:
-                self.create_answer(dto, db_dto=db_dto, *kwargs)
+                self.create_answer(dto, db_dto=db_dto, **kwargs)
         db_dto.validate_answer()
         return db_dto
 

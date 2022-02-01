@@ -203,7 +203,7 @@ class MongoStore(AbstractStore):
             )
         )
         if doc:
-            db_dto.answer = QAAnswer.parse_obj(doc)
+            db_dto.answer = QAAnswer.parse_obj(doc[0])
         return db_dto
 
     @session_decorator
